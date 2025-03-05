@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Method</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID"></script>
+  <style>
+    /* Body with gradient background */
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right,red,blue);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    /* Payment form styling */
+    .payment-form {
+      background: black;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      width: 400px;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    /* Form heading */
+    .payment-form h2 {
+      margin-bottom: 1.5rem;
+      font-size: 1.8rem;
+      color: #ffff;
+      text-align: center;
+    }
+
+    /* Payment method options */
+    .payment-options {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      background-color: Skyblue;
+    }
+
+    .payment-option {
+      flex: 1;
+      text-align: center;
+      padding: 1rem;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .payment-option:hover {
+      border-color: #6772e5;
+      transform: translateY(-5px);
+    }
+
+    .payment-option.selected {
+      border-color: #6772e5;
+      background-color: darkblue;
+    }
+
+    .payment-option img {
+      width: 30px; /* Reduced logo size */
+      height: auto;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Card input fields */
+    .card-input {
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      background: #f9f9f9;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Button styling */
+    button {
+      background-color: #6772e5;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #5469d4;
+    }
+
+    /* Error message styling */
+    #card-error-message {
+      color: #ff3860;
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    /* PayPal button container */
+    #paypal-button-container {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    /* PayPal logo styling */
+    .paypal-logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #003087; /* PayPal blue */
+    }
+
+    .paypal-logo span {
+      color: #009cde; /* PayPal lighter blue */
+    }
+
+    /* Fade-in animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-form">
+    <h2>Choose Payment Method</h2>
+
+    <!-- Payment Options -->
+    <div class="payment-options">
+      <div class="payment-option" id="visa-option" onclick="selectPaymentMethod('visa')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa">
+        <p>Visa</p>
+      </div>
+      <div class="payment-option" id="mastercard-option" onclick="selectPaymentMethod('mastercard')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="MasterCard">
+        <p>MasterCard</p>
+      </div>
+      <div class="payment-option" id="paypal-option" onclick="selectPaymentMethod('paypal')">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal">
+        <p>PayPal</p>
+      </div>
+    </div>
+
+    <!-- Card Details Section (Hidden by Default) -->
+    <div id="card-details" style="display: none;">
+      <h3>Card Details</h3>
+      <form id="card-form">
+        <input type="text" id="card-number" class="card-input" placeholder="Card Number (e.g., 4242 4242 4242 4242)" maxlength="19">
+        <input type="text" id="card-expiry" class="card-input" placeholder="MM/YY" maxlength="5">
+        <input type="text" id="card-cvc" class="card-input" placeholder="CVC" maxlength="3">
+        <button id="card-submit">Pay with Card</button>
+        <div id="card-error-message"></div>
+      </form>
+    </div>
+
+    <!-- PayPal Section (Hidden by Default) -->
+    <div id="paypal-section" style="display: none;">
+      <h3>PayPal</h3>
+      <div id="paypal-button-container">
+        <div class="paypal-logo">
+          <span>Pay</span>Pal
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Debugging: Check if PayPal SDK is loaded
+    console.log('PayPal SDK loaded:', typeof paypal !== 'undefined');
+
+    // Function to handle payment method selection
+    function selectPaymentMethod(method) {
+      // Reset all options
+      document.querySelectorAll('.payment-option').forEach(option => {
+        option.classList.remove('selected');
+      });
+
+      // Show selected option
+      if (method === 'visa' || method === 'mastercard') {
+        document.getElementById('card-details').style.display = 'block';
+        document.getElementById('paypal-section').style.display = 'none';
+        document.getElementById(`${method}-option`).classList.add('selected');
+      } else if (method === 'paypal') {
+        document.getElementById('card-details').style.display = 'none';
+        document.getElementById('paypal-section').style.display = 'block';
+        document.getElementById('paypal-option').classList.add('selected');
+      }
+    }
+
+    // Automatically add spaces in card number input
+    const cardNumberInput = document.getElementById('card-number');
+    cardNumberInput.addEventListener('input', (event) => {
+      const value = event.target.value.replace(/\s+/g, ''); // Remove existing spaces
+      let formattedValue = '';
+      for (let i = 0; i < value.length; i++) {
+        if (i > 0 && i % 4 === 0) {
+          formattedValue += ' '; // Add a space every 4 digits
+        }
+        formattedValue += value[i];
+      }
+      event.target.value = formattedValue.trim(); // Update input value
+    });
+
+    // Luhn Algorithm for card validation
+    function isValidCardNumber(cardNumber) {
+      // Remove all spaces
+      const cleanedCardNumber = cardNumber.replace(/\s+/g, '');
+      let sum = 0;
+      for (let i = 0; i < cleanedCardNumber.length; i++) {
+        let digit = parseInt(cleanedCardNumber[i]);
+        if ((cleanedCardNumber.length - i) % 2 === 0) {
+          digit *= 2;
+          if (digit > 9) digit -= 9;
+        }
+        sum += digit;
+      }
+      return sum % 10 === 0;
+    }
+
+    // Custom card input handling
+    const cardNumber = document.getElementById('card-number');
+    const cardExpiry = document.getElementById('card-expiry');
+    const cardCvc = document.getElementById('card-cvc');
+    const cardForm = document.getElementById('card-form');
+
+    cardForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const cardData = {
+        number: cardNumber.value,
+        exp: cardExpiry.value,
+        cvc: cardCvc.value,
+      };
+
+      // Remove spaces from card number
+      const cleanedCardNumber = cardData.number.replace(/\s+/g, '');
+
+      // Validate card number
+      if (!isValidCardNumber(cleanedCardNumber)) {
+        document.getElementById('card-error-message').textContent = 'Invalid card number.';
+        return;
+      }
+
+      // Validate expiration date
+      const [month, year] = cardData.exp.split('/');
+      const currentYear = new Date().getFullYear() % 100;
+      const currentMonth = new Date().getMonth() + 1;
+
+      if (
+        !month || !year ||
+        parseInt(month) < 1 || parseInt(month) > 12 ||
+        parseInt(year) < currentYear ||
+        (parseInt(year) === currentYear && parseInt(month) < currentMonth)
+      ) {
+        document.getElementById('card-error-message').textContent = 'Invalid expiration date.';
+        return;
+      }
+
+      // Validate CVC
+      if (!cardData.cvc || cardData.cvc.length < 3) {
+        document.getElementById('card-error-message').textContent = 'Invalid CVC.';
+        return;
+      }
+
+      // Simulate payment processing
+      setTimeout(() => {
+        alert('Card payment successful!');
+      }, 1000);
+    });
+
+    // PayPal Integration
+    if (typeof paypal !== 'undefined') {
+      paypal.Buttons({
+        createOrder: function (data, actions) {
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: '10.00' // Set the payment amount
+              }
+            }]
+          });
+        },
+        onApprove: function (data, actions) {
+          return actions.order.capture().then(function (details) {
+            alert('PayPal payment completed by ' + details.payer.name.given_name);
+          });
+        }
+      }).render('#paypal-button-container');
+    } else {
+      console.error('PayPal SDK failed to load.');
+    }
+  </script>
+</body>
+</html>
